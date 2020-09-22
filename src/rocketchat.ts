@@ -1,5 +1,5 @@
 import * as github from '@actions/github';
-import Octokit from '@octokit/rest';
+import {Octokit} from '@octokit/rest';
 import {Context} from '@actions/github/lib/context';
 import axios from 'axios';
 
@@ -43,11 +43,12 @@ class Helper {
 		return eventName === 'pull_request';
 	}
 
-	public get baseFields(): any[] {
-		const {sha, eventName, workflow, ref} = this.context;
+	public async baseFields(ref: string, deploymentUrl: string, logsUrl: string): Promise<any[]> {
+		const {sha, eventName, workflow} = this.context;
 		const {owner, repo} = this.context.repo;
 		const {number} = this.context.issue;
 		const repoUrl: string = `https://github.com/${owner}/${repo}`;
+		const projectUrl: string = `https://build.suse.de/project/show/${ref.split('/')[0]}`;
 		let actionUrl: string = repoUrl;
 		let eventUrl: string = eventName;
 
@@ -58,28 +59,33 @@ class Helper {
 			actionUrl += `/commit/${sha}/checks`;
 		}
 
-		return [
+		const fields = [
 			{
 				short: true,
-				title: 'ref',
-				value: ref
-			},
-			{
-				short: true,
-				title: 'event name',
-				value: eventUrl
-			},
-			{
-				short: true,
-				title: 'workflow',
-				value: `[${workflow}](${actionUrl})`
+				title: 'Ref',
+				value: `[${ref}](${projectUrl})`
 			},
 			{
 				short: false,
-				title: 'repository',
-				value: `[${owner}/${repo}](${repoUrl})`
+				title: 'Workflow',
+				value: `[${workflow}](${actionUrl})`
 			}
 		];
+		if (deploymentUrl) {
+			fields.push({
+				short: true,
+				title: 'Deployment',
+				value: `[${deploymentUrl}](${deploymentUrl})`
+			});
+		}
+		if (logsUrl) {
+			fields.push({
+				short: true,
+				title: 'Logs',
+				value: `[${logsUrl}](${logsUrl})`
+			});
+		}
+		return fields;
 	}
 
 	public async getCommitFields(token: string): Promise<any[]> {
@@ -113,13 +119,23 @@ export class RocketChat {
 		return condition === 'always' || condition === status;
 	}
 
-	public async generatePayload(jobName: string, status: string, mention: string, mentionCondition: string, commitFlag: boolean, token?: string): Promise<any> {
+	public async generatePayload(
+		jobName: string,
+		jobRef: string,
+		deploymentUrl: string,
+		logsUrl: string,
+		status: string,
+		mention: string,
+		mentionCondition: string,
+		commitFlag: boolean,
+		token?: string
+	): Promise<any> {
 		const helper = new Helper();
 		const notificationType: Accessory = helper[status];
 		const tmpText: string = `${jobName} ${notificationType.result}`;
 		const text = mention && this.isMention(mentionCondition, status) ? `@${mention} ${tmpText}` : tmpText;
 
-		const fields = helper.baseFields;
+		const fields = await helper.baseFields(jobRef, deploymentUrl, logsUrl);
 
 		if (commitFlag && token) {
 			const commitFields = await helper.getCommitFields(token);

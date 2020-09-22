@@ -7,6 +7,9 @@ async function run() {
 	try {
 		const status: string = validateStatus(core.getInput('type', {required: true}).toLowerCase());
 		const jobName: string = core.getInput('job_name', {required: true});
+		const jobRef: string = core.getInput('job_ref', {required: true});
+		const deploymentUrl: string = core.getInput('deployment_url');
+		const logsUrl: string = core.getInput('logs_url');
 		const url: string = process.env.ROCKETCHAT_WEBHOOK || core.getInput('url');
 		let mention: string = core.getInput('mention');
 		let mentionCondition: string = core.getInput('mention_if').toLowerCase();
@@ -36,7 +39,7 @@ async function run() {
 		}
 
 		const rocketchat = new RocketChat();
-		const payload = await rocketchat.generatePayload(jobName, status, mention, mentionCondition, commitFlag, token);
+		const payload = await rocketchat.generatePayload(jobName, jobRef, deploymentUrl, logsUrl, status, mention, mentionCondition, commitFlag, token);
 
 		await rocketchat.notify(url, options, payload);
 		console.info('Sent message to Rocket.Chat');

@@ -8,6 +8,17 @@ inputs:
   job_name:
     description: 'job name of workflow (format: markdown)'
     required: true
+  job_ref:
+    description: 'set ref field'
+    required: true
+  deployment_url:
+    description: 'url where the deployment is available'
+    required: false
+    default: ''
+  logs_url:
+    description: 'url to the logs'
+    required: false
+    default: ''
   mention:
     description: 'rocket.chat mention'
     required: false
